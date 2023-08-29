@@ -6,14 +6,15 @@ exports.up = function(knex) {
     return knex.schema
     .createTable('user', (table) => {
       table.increments('id').primary();
+      table.string('google_id');
       table.string('firstname').notNullable();
       table.string('lastname').notNullable();
       table.string('email').notNullable().unique();
-      table.string('phone_number').notNullable().unique();
-      table.date('date_of_birth').notNullable();
+      table.string('phone_number').unique();
+      table.date('date_of_birth');
       table.string('avatar_url').notNullable();
       table.string('username').notNullable().unique();
-      table.string('password_hash').notNullable();
+      table.string('password_hash');
       table.text('bio');
       table.timestamp('created_at').defaultTo(knex.fn.now());
       table.timestamp('updated_at').defaultTo(knex.fn.now());
