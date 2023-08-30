@@ -1,6 +1,7 @@
 const knex = require("knex")(require("../knexfile"));
 const jwt = require("jsonwebtoken");
 
+
 const validateJwt = (token) => {
   if (!token) {
     return null;
@@ -14,15 +15,13 @@ const validateJwt = (token) => {
   return true;
 };
 
+
 const fetchUserById = (req, res) => {
   const token = validateJwt(req.headers.authorization);
 
   if (!token && !req.user) {
     return res.status(401).json({ message: "No or invalid token." });
   }
-
-  //If the passport-local doesn't work, then I can send the frontend request with
-  //the credentials true and the headers.authorization
 
   knex(`user`)
     .where({ id: req.params.userId })

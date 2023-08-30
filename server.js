@@ -12,6 +12,7 @@ const postRouter = require("./routes/postRoutes");
 const authRouter = require("./routes/authRoutes");
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const bcrypt = require("bcryptjs");
 
 app.use(express.json());
 app.use(helmet());
@@ -46,15 +47,21 @@ passport.use(new GoogleStrategy({
       .then(user => {
           if (user) {
           done(null,user);
-        } else {
+          } else {
+              const hashedPassword = bcrypt.hashSync(profile._json.email, 10);
+              const newBio = `🌟 Living my best life and making each moment count on Clique. Let's make memories and spread positivity! 💕`
+
           knex('user')
             .insert({
               google_id: profile.id,
               avatar_url: profile._json.picture,
-              username: profile.displayName,
+              username: profile._json.email,
                 email: profile._json.email,
                 firstname: profile._json.given_name,
-                lastname:profile._json.family_name
+                lastname: profile._json.family_name,
+                password_hash: hashedPassword,
+                bio: newBio,
+                display_name:profile.displayName
             })
               .then(userId => {
               done(null,{id:userId[0]});
@@ -85,7 +92,7 @@ passport.deserializeUser((userId, done) => {
       });
   });
   
-
+app.use(express.static("./assets"));
 
 app.use("/auth", authRouter);
 app.use("/users", userRouter);
