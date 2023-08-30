@@ -1,4 +1,3 @@
-const express = require("express");
 const knex = require("knex")(require("../knexfile"));
 const jwt = require("jsonwebtoken");
 
@@ -16,40 +15,33 @@ const validateJwt = (token) => {
 };
 
 const fetchUserById = (req, res) => {
-  //   if (!req.headers.authorization) {
-  //     return res.status(401).send("Please include your jwt");
-  //   }
+  const token = validateJwt(req.headers.authorization);
 
-  //     const authHeader = req.headers.authorization;
-  //     const authToken = authHeader.split(' ')[1];
+  if (!token && !req.user) {
+    return res.status(401).json({ message: "No or invalid token." });
+  }
 
-  //     jwt.verify(authToken, process.env.SESSION_SECRET, (err, decode) => {
-  //         if (err) {
-  //             return res.status(401).send({ message: "Invalid auth token" });
-  //         }
+  //If the passport-local doesn't work, then I can send the frontend request with
+  //the credentials true and the headers.authorization
 
   knex(`user`)
     .where({ id: req.params.userId })
-    .andWhere("status", "Active")
     .first()
     .then((user) => {
       delete user.password;
       return res.status(200).json(user);
     })
     .catch((err) => {
-      return res
-        .status(500)
-        .json({
-          message: `We encountered an error carrying out your request: ${err}`,
-        });
+      return res.status(500).json({
+        message: `We encountered an error carrying out your request: ${err}`,
+      });
     });
-  // })
 };
 
 const editUser = (req, res) => {
   const token = validateJwt(req.headers.authorization);
 
-  if (!token) {
+  if (!token && !req.user) {
     return res.status(401).json({ message: "No or invalid token." });
   }
 
@@ -57,27 +49,46 @@ const editUser = (req, res) => {
     .where({ id: req.params.userId })
     .andWhere("status", "Active")
     .update(req.body)
-    .then((result) => {
+    .then(() => {
       return knex("user").where({
         id: req.params.userId,
       });
     })
     .then((updatedUser) => {
-      res.json(updatedUser[0]);
+      res.status(204).json(updatedUser[0]);
     })
     .catch(() => {
-      res
+      res.status(500).json({
+        message: `Unable to make changes to user with ID: ${req.params.userId}`,
+      });
+    });
+};
+
+const deactivateUser = (req, res) => {
+  const token = validateJwt(req.headers.authorization);
+
+  if (!token && !req.user) {
+    return res.status(401).json({ message: "No or invalid token." });
+  }
+
+  knex("user")
+    .where({ id: req.params.userid })
+    .andWhere("status", "Active")
+    .update({ status: "Inactive" })
+    .then(() => {
+      return res.sendStatus(203);
+    })
+    .catch((err) => {
+      return res
         .status(500)
-        .json({
-          message: `Unable to make changes to user with ID: ${req.params.userId}`,
-        });
+        .json({ message: `Unable to carryout operation: ${err.message}` });
     });
 };
 
 const softDeleteUserById = (req, res) => {
   const token = validateJwt(req.headers.authorization);
 
-  if (!token) {
+  if (!token && !req.user) {
     return res.status(401).json({ message: "No or invalid token." });
   }
 
@@ -95,9 +106,29 @@ const softDeleteUserById = (req, res) => {
     });
 };
 
+const reactivateUser = (req, res) => {
+  const token = validateJwt(req.headers.authorization);
+
+  if (!token && !req.user) {
+    return res.status(401).json({ message: "No or invalid token." });
+  }
+
+  knex("user")
+    .where({ id: req.params.userid })
+    .andWhere("status", "Inactive")
+    .then((user) => {
+      if (!user.length) {
+        return res
+          .status(404)
+          .json({ message: `Unable to find User with Id: ${req.params.id}` });
+      }
+    });
+};
+
 module.exports = {
   fetchUserById,
   editUser,
-  
   softDeleteUserById,
+  deactivateUser,
+  reactivateUser,
 };

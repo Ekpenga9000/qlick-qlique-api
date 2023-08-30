@@ -21,8 +21,8 @@ router.get(
 
 router.get(
   "/google/callback",
-  passport.authenticate("google", { failureRedirect: `${process.env.CLIENT_URL}/auth-fail` }),
-    function (_req, res) {
+  passport.authenticate("google", { failureRedirect: `${process.env.CLIENT_URL}/login` }),
+  function (_req, res) {
     res.redirect(`${process.env.CLIENT_URL}/users/${_req.user.id}`);
   }
 );
@@ -32,9 +32,9 @@ router.get('/profile', (req, res) => {
     // Passport stores authenticated user information on `req.user` object.
     // Comes from done function of `deserializeUser`
     if (req.user === undefined) return res.status(401).json({ message: 'Unauthorized' });
-  
     // If user is currently authenticated, send back user info
-    res.status(200).json(req.user);
+  res.status(200).json(req.user);
+  
   });
   
   // Create a logout endpoint

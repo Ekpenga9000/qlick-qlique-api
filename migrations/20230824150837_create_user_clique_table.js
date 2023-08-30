@@ -9,6 +9,7 @@ exports.up = function (knex) {
     table.integer("clique_id").unsigned().notNullable();
     table.enu("user_roles", ["Owner", "Guest"]).defaultTo("Guest");
     table.timestamp("joined_clique").defaultTo(knex.fn.now());
+    table.enu("Status", ["Joined", "Left"]);
     table
       .foreign("user_id")
       .references("id")

@@ -4,6 +4,8 @@ const createPost = (req, res) => {
     if (!req.headers.authorization) {
        return res.status(401).json({message:"No token included."})
     } 
+
+    
     
     //check for the jwt token - check
     //check that there is a user 
