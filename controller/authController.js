@@ -31,7 +31,7 @@ const login = async (req, res) => {
     const token = jwt.sign(payload, process.env.SESSION_SECRET, {
       expiresIn: "1h",
     });
-    return res.status(200).json({ token: token });
+    return res.status(200).json({ token: token, userId : user.id });
   } catch (err) {
     console.log(err);
     res.status(500).json({ message: `We couldn't even connect to DB: ${err}` });

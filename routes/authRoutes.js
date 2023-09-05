@@ -22,7 +22,7 @@ router.get(
   "/google/callback",
   passport.authenticate("google", { failureRedirect: `${process.env.CLIENT_URL}/login` }),
   function (_req, res) {
-    res.redirect(`${process.env.CLIENT_URL}/users/${_req.user.id}`);
+    res.redirect(`${process.env.CLIENT_URL}/profiles/${_req.user.id}`);
   }
 );
 

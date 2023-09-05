@@ -1,33 +1,46 @@
 const knex = require("knex")(require("../knexfile"));
 const jwt = require("jsonwebtoken");
 
-const validateJwtAndPassport = (token = null, googleAuth = null, res) => {
-  if (!token && !googleAuth) {
-    return res.status(401).json({ message: "Unauthorized" });
+const validateJwt = (token) => {
+  if (!token) {
+    return null;
   }
-
   let user_id;
-
-  if (token) {
-    const authToken = token.split(" ")[1];
-    jwt.verify(authToken, process.env.SESSION_SECRET, (err, decode) => {
-      if (err) {
-        return res.status(401).send("Invalid auth token");
-      }
-      user_id = decode.id;
-    });
-  } else {
-    user_id = googleAuth.id;
-  }
-
+  const authToken = token.split(" ")[1];
+  jwt.verify(authToken, process.env.SESSION_SECRET, (err, decode) => {
+    if (err) {
+      return null;
+    }
+    user_id = decode.id;
+  });
   return user_id;
 };
 
 const getAllCliques = (req, res) => {
+  let clientId = validateJwt(req.headers.authorization);
+
+  if (!clientId && !req.user) {
+    return res.status(401).send("Unauthorized");
+  }
+
+  if (!clientId) {
+    clientId = req.user.id;
+  }
+
   knex("clique")
-    .where({ status: "Active" })
+    .join("user", "clique.user_id", "=", "user.id")
+    .select(
+      "clique.id",
+      "clique.name",
+      "clique.category",
+      "clique.description",
+      "user.display_name",
+      "user.username"
+    )
+    .where("clique.status", "Active")
+    .orderBy("clique.updated_at", "desc")
     .then((data) => {
-      return res.status(200).json(data);
+      return res.status(200).json({ clique: data, clientid: clientId });
     })
     .catch((err) => {
       return res
@@ -37,13 +50,34 @@ const getAllCliques = (req, res) => {
 };
 
 const getCliquesById = (req, res) => {
+  let clientId = validateJwt(req.headers.authorization);
+
+  if (!clientId && !req.user) {
+    return res.status(401).send("Unauthorized");
+  }
+
+  if (!clientId) {
+    clientId = req.user.id;
+  }
+
   knex("clique")
-    .where({ id: req.params.cliqueId })
-    .andWhere({ status: "Active" })
+    .join("user", "clique.user_id", "=", "user.id")
+    .select(
+      "clique.id",
+      "clique.name",
+      "clique.category",
+      "clique.description",
+      "clique.banner_url",
+      "user.display_name",
+      "user.username"
+    )
+    .where("clique.id", req.params.cliqueid)
+    .andWhere("clique.status", "Active")
+    .first()
     .then((data) => {
-      if (!data.length) {
+      if (!data) {
         return res.status(404).json({
-          message: `Clique with the id: ${req.params.cliqueId} was not found`,
+          message: `Clique with the id: ${req.params.cliqueid} was not found`,
         });
       }
       return res.status(200).json(data);
@@ -56,11 +90,15 @@ const getCliquesById = (req, res) => {
 };
 
 const createClique = async (req, res) => {
-  const user_id = validateJwtAndPassport(
-    req.headers.authorization,
-    req.user,
-    res
-  );
+  let clientId = validateJwt(req.headers.authorization);
+
+  if (!clientId && !req.user) {
+    return res.status(401).send("Unauthorized");
+  }
+
+  if (!clientId) {
+    clientId = req.user.id;
+  }
 
   const { name, description, category, banner_url } = req.body;
 
@@ -71,18 +109,17 @@ const createClique = async (req, res) => {
   try {
     // Use a single transaction to ensure data integrity
     const createdClique = await knex.transaction(async (trx) => {
-      // Insert new clique and get inserted ID
       const [newCliqueId] = await trx("clique").insert({
         name,
         description,
         category,
         banner_url,
-        user_id,
+        user_id: clientId,
+        banner_url: "/images/cliqueBanner.png",
       });
 
-      // Insert a new user_clique connection
       const [newUserCliqueConnection] = await trx("user_clique").insert({
-        user_id,
+        user_id: clientId,
         clique_id: newCliqueId,
         user_roles: "Owner",
       });
@@ -93,7 +130,7 @@ const createClique = async (req, res) => {
     });
 
     // Send the created clique as a response
-    res.json({ newClique: createdClique });
+    res.status(200).json({ newClique: createdClique, creatorid: clientId });
   } catch (error) {
     console.error("Could not create Clique: ", error);
     res.status(500).json({ error: "Could not create Clique" });
@@ -101,6 +138,16 @@ const createClique = async (req, res) => {
 };
 
 const searchClique = (req, res) => {
+  let clientId = validateJwt(req.headers.authorization);
+
+  if (!clientId && !req.user) {
+    return res.status(401).send("Unauthorized");
+  }
+
+  if (!clientId) {
+    clientId = req.user.id;
+  }
+
   const searchString = req.body.search;
   knex("clique")
     .select("clique.*", "user.username")
@@ -109,10 +156,11 @@ const searchClique = (req, res) => {
     .orWhereRaw("LOWER(name) LIKE ?", `%${searchString.toLowerCase()}%`)
     .orWhereRaw("LOWER(description) LIKE ?", `%${searchString.toLowerCase()}%`)
     .orWhereRaw("LOWER(user.username) LIKE ?", `%${searchString}%`)
+    .orWhereRaw("LOWER(user.display_name) LIKE ?", `%${searchString}%`)
     .andWhere({ status: "Active" })
     .then((data) => {
       if (data.length) {
-        return res.status(200).json(data);
+        return res.status(200).json({ cliqueData: data, clientid: clientId });
       } else {
         return res.status(404).json({ message: "Unable able to find Clique" });
       }
@@ -125,18 +173,24 @@ const searchClique = (req, res) => {
 };
 
 const editCliqueById = (req, res) => {
-  const user_id = validateJwtAndPassport(
-    req.headers.authorization,
-    req.user,
-    res
-  );
+  let clientId = validateJwt(req.headers.authorization);
+
+  if (!clientId && !req.user) {
+    return res.status(401).send("Unauthorized");
+  }
+
+  if (!clientId) {
+    clientId = req.user.id;
+  }
 
   knex("clique")
     .where({ id: req.body.id })
-    .andWhere({ user_id: user_id })
+    .andWhere({ user_id: clientId })
     .update(req.body)
     .then((updatedClique) => {
-      res.status(204).json(updatedClique[0]);
+      res
+        .status(204)
+        .json({ updatedData: updatedClique[0], clientid: clientId });
     })
     .catch(() => {
       res.status(500).json({
@@ -145,20 +199,26 @@ const editCliqueById = (req, res) => {
     });
 };
 
-const changeCliqueStatus = (newStatus, req, res) => {
-  const user_id = validateJwtAndPassport(
-    req.headers.authorization,
-    req.user,
-    res
-  );
+const changeCliqueStatus = (newStatus, responseCode, req, res) => {
+  let clientId = validateJwt(req.headers.authorization);
+
+  if (!clientId && !req.user) {
+    return res.status(401).send("Unauthorized");
+  }
+
+  if (!clientId) {
+    clientId = req.user.id;
+  }
 
   knex("clique")
     .where({ id: req.body.id })
-    .andWhere({ user_id: user_id })
+    .andWhere({ user_id: clientId })
     .whereNot({ status: "Deleted" })
     .update({ status: `${newStatus}` })
     .then((updatedClique) => {
-      res.status(204).json(updatedClique[0]);
+      res
+        .status(responseCode)
+        .json({ updatedData: updatedClique[0], clientid: clientId });
     })
     .catch(() => {
       res.status(500).json({
@@ -168,36 +228,78 @@ const changeCliqueStatus = (newStatus, req, res) => {
 };
 
 const deactivateCliqueById = (req, res) => {
-  changeCliqueStatus("Deactivated", req, res);
+  changeCliqueStatus("Deactivated", 204, req, res);
 };
 
 const deleteCliqueById = (req, res) => {
-  changeCliqueStatus("Deleted", req, res);
+  changeCliqueStatus("Deleted", 204, req, res);
 };
 
 const reactivateClique = (req, res) => {
-  changeCliqueStatus("Active", req, res);
+  changeCliqueStatus("Active", 200, req, res);
 };
 
 const fetchPostsOfCliques = (req, res) => {
+  let clientId = validateJwt(req.headers.authorization);
+
+  if (!clientId && !req.user) {
+    return res.status(401).send("Unauthorized");
+  }
+
+  if (!clientId) {
+    clientId = req.user.id;
+  }
+
   knex("clique")
     .join("post", "post.clique_id", "clique.id")
     .where({ clique_id: req.params.cliqueId })
     .then((posts) => {
       if (posts.length === 0) {
-        return res
-          .status(404)
-          .json({
-            message: `Posts for user with ID: ${req.params.userId} not found`,
-          });
+        return res.status(404).json({
+          message: `Posts for user with ID: ${req.params.userId} not found`,
+        });
       }
 
-      res.status(200).json(posts);
+      res.status(200).json({ posts: posts, clientid: clientId });
     })
     .catch((error) => {
       res.status(500).json({
         message: `Unable to retrieve posts for user with ID: ${req.params.id} ${error}`,
       });
+    });
+};
+
+const getPostByCliqueId = (req, res) => {
+  let clientId = validateJwt(req.headers.authorization);
+
+  if (!clientId && !req.user) {
+    return res.status(401).send("Request unauthorized");
+  }
+
+  const cliqueid = req.params.cliqueid;
+
+  knex("post")
+    .select(
+      "post.id",
+      "post.user_id",
+      "post.clique_id",
+      "post.content",
+      "post.created_by",
+      "post.image_url",
+      "user.display_name",
+      "user.avatar_url"
+    )
+    .join("clique", "post.clique_id", "=", "clique.id")
+    .join("user", "post.user_id", "=", "user.id")
+    .where("post.status", "Active")
+    .andWhere("post.clique_id", cliqueid)
+    .orderBy("post.created_by", "desc")
+    .then((post) => {
+      return res.status(200).json({ post: post, clientId: clientId });
+    })
+    .catch((err) => {
+      console.log(err);
+      return res.status(500).send(err.message);
     });
 };
 
@@ -210,4 +312,6 @@ module.exports = {
   getAllCliques,
   getCliquesById,
   fetchPostsOfCliques,
+  searchClique,
+  getPostByCliqueId,
 };

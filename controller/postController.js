@@ -1,18 +1,85 @@
-const knex = require("knex")(require('../knexfile'));
+const knex = require("knex")(require("../knexfile"));
+const jwt = require("jsonwebtoken");
+const path = require("path");
 
-const createPost = (req, res) => {
-    if (!req.headers.authorization) {
-       return res.status(401).json({message:"No token included."})
-    } 
+const validateJwt = (token) => {
+  if (!token) {
+    return null;
+  }
+  let user_id;
+  const authToken = token.split(" ")[1];
+  jwt.verify(authToken, process.env.SESSION_SECRET, (err, decode) => {
+    if (err) {
+      return null;
+    }
+    user_id = decode.id;
+  });
+  return user_id;
+};
 
-    
-    
-    //check for the jwt token - check
-    //check that there is a user 
-    //check that there is a clique id
-    // check that the inputs are not empty
-}
+
+const getPostByUserId = (req, res) => {
+  let clientId = validateJwt(req.headers.authorization);
+
+  if (!clientId && !req.user) {
+    return res.status(401).send("Request unauthorized");
+  }
+
+  if (!clientId) {
+    clientId = req.user.id;
+  }
+
+  knex("post")
+    .select(
+      "post.id",
+      "post.user_id",
+      "post.clique_id",
+      "post.content",
+      "post.created_by",
+      "post.image_url",
+      "user.display_name",
+      "user.avatar_url"
+    )
+    .join("clique", "post.clique_id", "=", "clique.id")
+    .join("user", "post.user_id", "=", "user.id")
+    .where("post.status", "Active")
+    .andWhere("post.user_id", clientId)
+    .orderBy("post.created_by", "desc")
+    .then((post) => {
+      return res.status(200).json({ post: post, clientId: clientId });
+    })
+    .catch((err) => {
+      console.log(err);
+      return res.status(500).send(err.message);
+    });
+};
+
+const deletePostById = (req, res) => {
+  let clientId = validateJwt(req.headers.authorization);
+
+  if (!clientId && !req.user) {
+    return res.status(401).send("Request unauthorized");
+  }
+
+  if (!clientId) {
+    clientId = req.user.id;
+  }
+
+  knex("post")
+    .where("id", req.params.postid)
+    .andWhere("user_id", clientId)
+    .andWhere("status", "Active")
+    .update("status", "Deleted")
+    .then(() => {
+      return res.status(204).send("Post have been deleted");
+    })
+    .catch((err) => {
+      console.log(err);
+      return res.status(500).send(err.message);
+    });
+};
 
 module.exports = {
-    createPost
-}
+  getPostByUserId,
+  deletePostById,
+};
