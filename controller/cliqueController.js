@@ -24,7 +24,7 @@ const getAllCliques = (req, res) => {
   }
 
   if (!clientId) {
-    clientId = req.user.id; 
+    clientId = req.user.id;
   }
 
   knex("clique")
@@ -38,7 +38,7 @@ const getAllCliques = (req, res) => {
       "user.username"
     )
     .where("clique.status", "Active")
-    .orderBy('clique.updated_at', 'desc')
+    .orderBy("clique.updated_at", "desc")
     .then((data) => {
       return res.status(200).json({ clique: data, clientid: clientId });
     })
@@ -71,13 +71,13 @@ const getCliquesById = (req, res) => {
       "user.display_name",
       "user.username"
     )
-    .where("clique.id", req.params.cliqueid) 
-    .andWhere("clique.status", "Active") 
+    .where("clique.id", req.params.cliqueid)
+    .andWhere("clique.status", "Active")
     .first()
     .then((data) => {
       if (!data) {
         return res.status(404).json({
-          message: `Clique with the id: ${req.params.cliqueid} was not found`, 
+          message: `Clique with the id: ${req.params.cliqueid} was not found`,
         });
       }
       return res.status(200).json(data);
@@ -88,7 +88,6 @@ const getCliquesById = (req, res) => {
       });
     });
 };
-
 
 const createClique = async (req, res) => {
   let clientId = validateJwt(req.headers.authorization);
@@ -116,7 +115,7 @@ const createClique = async (req, res) => {
         category,
         banner_url,
         user_id: clientId,
-        banner_url:"/images/cliqueBanner.png"
+        banner_url: "/images/cliqueBanner.png",
       });
 
       const [newUserCliqueConnection] = await trx("user_clique").insert({
@@ -270,6 +269,40 @@ const fetchPostsOfCliques = (req, res) => {
     });
 };
 
+const getPostByCliqueId = (req, res) => {
+  let clientId = validateJwt(req.headers.authorization);
+
+  if (!clientId && !req.user) {
+    return res.status(401).send("Request unauthorized");
+  }
+
+  const cliqueid = req.params.cliqueid;
+
+  knex("post")
+    .select(
+      "post.id",
+      "post.user_id",
+      "post.clique_id",
+      "post.content",
+      "post.created_by",
+      "post.image_url",
+      "user.display_name",
+      "user.avatar_url"
+    )
+    .join("clique", "post.clique_id", "=", "clique.id")
+    .join("user", "post.user_id", "=", "user.id")
+    .where("post.status", "Active")
+    .andWhere("post.clique_id", cliqueid)
+    .orderBy("post.created_by", "desc")
+    .then((post) => {
+      return res.status(200).json({ post: post, clientId: clientId });
+    })
+    .catch((err) => {
+      console.log(err);
+      return res.status(500).send(err.message);
+    });
+};
+
 module.exports = {
   createClique,
   editCliqueById,
@@ -280,4 +313,5 @@ module.exports = {
   getCliquesById,
   fetchPostsOfCliques,
   searchClique,
+  getPostByCliqueId,
 };

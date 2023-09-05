@@ -1,7 +1,6 @@
 const knex = require("knex")(require("../knexfile"));
 const jwt = require("jsonwebtoken");
 const path = require("path");
-const multer = require("multer");
 
 const validateJwt = (token) => {
   if (!token) {
@@ -18,83 +17,8 @@ const validateJwt = (token) => {
   return user_id;
 };
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "assets/images/posts/");
-  },
-  filename: (req, file, cb) => {
-    cb(
-      null,
-      `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`
-    );
-  },
-});
 
-const upload = multer({
-  storage,
-  fileFilter: function (req, file, cb) {
-    const filetypes = /jpeg|jpg|png/;
-    const extname = filetypes.test(
-      path.extname(file.originalname).toLowerCase()
-    );
-    const mimetype = filetypes.test(file.mimetype);
-
-    if (mimetype && extname) {
-      return cb(null, true);
-    }
-    cb(
-      "Error: File upload only supports the following file types - " + filetypes
-    );
-  },
-}).single("postImage"); // "postImage" is the form field name
-
-const createPost = async (req, res) => {
-  if (!req.headers.authorization && !req.user) {
-    return res.status(401).json({ message: "Unauthorized access" });
-  }
-
-  const clientId = req.headers.authorization
-    ? validateJwt(req.headers.authorization)
-    : req.user.id;
-
-    if (!req.body.content && req.body.file || !req.body.cliqueid) {
-        console.log("The body", req.body.content, req.body.file, req.body);
-    return res.status(400).send("Your request is missing one or more fields");
-  }
-
-  // Upload and Validate File
-  upload(req, res, async (err) => {
-    if (err) {
-      return res.status(400).json({ message: err });
-    }
-
-    // File uploaded successfully
-    const img_url = req.file ? `images/posts/${req.file.filename}` : null;
-
-    try {
-      const [newPost] = await knex("post")
-        .insert({
-          content: req.body.content,
-          user_id: clientId,
-          clique_id: req.body.cliqueid,
-          url: img_url,
-        })
-        .returning("id");
-
-      res.status(200).json({
-        message: "Post successfully saved.",
-        post_id: newPost,
-      });
-    } catch (error) {
-      console.error("Database error:", error);
-      res
-        .status(500)
-        .json({ message: "Could not save to DB", error: error.message });
-    }
-  });
-};
-
-const getPostByCliqueAndUserId = (req, res) => {
+const getPostByUserId = (req, res) => {
   let clientId = validateJwt(req.headers.authorization);
 
   if (!clientId && !req.user) {
@@ -106,9 +30,21 @@ const getPostByCliqueAndUserId = (req, res) => {
   }
 
   knex("post")
+    .select(
+      "post.id",
+      "post.user_id",
+      "post.clique_id",
+      "post.content",
+      "post.created_by",
+      "post.image_url",
+      "user.display_name",
+      "user.avatar_url"
+    )
     .join("clique", "post.clique_id", "=", "clique.id")
     .join("user", "post.user_id", "=", "user.id")
     .where("post.status", "Active")
+    .andWhere("post.user_id", clientId)
+    .orderBy("post.created_by", "desc")
     .then((post) => {
       return res.status(200).json({ post: post, clientId: clientId });
     })
@@ -144,8 +80,6 @@ const deletePostById = (req, res) => {
 };
 
 module.exports = {
-  createPost,
-  getPostByCliqueAndUserId,
+  getPostByUserId,
   deletePostById,
 };
-

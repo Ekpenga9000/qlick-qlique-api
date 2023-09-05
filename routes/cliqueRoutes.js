@@ -11,4 +11,6 @@ router.get("/search", cliqueController.searchClique);
 
 router.get("/:cliqueid", cliqueController.getCliquesById)
 
+router.get("/:cliqueid/posts", cliqueController.getPostByCliqueId)
+
 module.exports = router;

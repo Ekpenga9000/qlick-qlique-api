@@ -27,7 +27,7 @@ const fetchUserById = (req, res) => {
     .where({ id: req.params.userId })
     .first()
     .then((user) => {
-      delete user.password;
+      delete user.password_hash;
       return res.status(200).json(user);
     })
     .catch((err) => {
