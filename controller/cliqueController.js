@@ -27,25 +27,44 @@ const getAllCliques = (req, res) => {
     clientId = req.user.id;
   }
 
-  knex("clique")
+  // knex("clique")
+  //   .join("user", "clique.user_id", "=", "user.id")
+  //   .join("favourites", "clique.id","")
+  //   .select(
+  //     "clique.id",
+  //     "clique.name",
+  //     "clique.category",
+  //     "clique.description",
+  //     "user.display_name",
+  //     "user.username"
+  //   )
+  //   .where("clique.status", "Active")
+  //   .orderBy("clique.updated_at", "desc")
+  //   .then((data) => {
+  //     return res.status(200).json({ clique: data, clientid: clientId });
+  //   })
+  //   .catch((err) => {
+  //     return res
+  //       .status(500)
+  //       .json({ message: `Unable to retrieve cliques: ${err}` });
+  //   });
+
+  knex('clique')
+    .select('clique.*', "user.display_name","favourites.status", knex.raw('CASE WHEN favourites.clique_id IS NOT NULL THEN true ELSE false END AS is_favourite'))
     .join("user", "clique.user_id", "=", "user.id")
-    .select(
-      "clique.id",
-      "clique.name",
-      "clique.category",
-      "clique.description",
-      "user.display_name",
-      "user.username"
-    )
-    .where("clique.status", "Active")
-    .orderBy("clique.updated_at", "desc")
-    .then((data) => {
+    .leftJoin('favourites', function() {
+      this.on('clique.id', '=', 'favourites.clique_id')
+          .andOn('favourites.user_id', '=', knex.raw('?', [clientId]))
+          // .andOn('favourites.status', '=', knex.raw('?', ['Added']));
+    })
+    .then(data => {
       return res.status(200).json({ clique: data, clientid: clientId });
     })
-    .catch((err) => {
+    .catch(error => {
+      console.error('Error:', error);
       return res
         .status(500)
-        .json({ message: `Unable to retrieve cliques: ${err}` });
+        .json({ message: `Unable to retrieve cliques: ${error}` });
     });
 };
 

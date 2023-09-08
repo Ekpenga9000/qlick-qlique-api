@@ -38,7 +38,8 @@ const getPostByUserId = (req, res) => {
       "post.created_by",
       "post.image_url",
       "user.display_name",
-      "user.avatar_url"
+        "user.avatar_url", 
+        "clique.name"
     )
     .join("clique", "post.clique_id", "=", "clique.id")
     .join("user", "post.user_id", "=", "user.id")
