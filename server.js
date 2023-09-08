@@ -150,6 +150,10 @@ app.use("/posts", postRouter);
 app.use("/cliques", cliqueRouter);
 app.use("/favourites", favouritesRouter);
 
+app.get("/", (req, res) => {
+  res.json({ "msg": "hello" }).status(200);
+})
+
 const validateJwt = (token) => {
   if (!token) {
     return null;
