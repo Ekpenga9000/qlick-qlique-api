@@ -84,12 +84,13 @@ const fetchFavouritesByUserId = (req, res) => {
         return res.status(401).send("Unauthorized")
     }
     
-    let clientId = validateJwt(req.headers.authorization);
+    let clientId = validateJwt(req.headers.authorization) || req.user.id;
 
     if (!clientId) {
-        console.log("The req.user", req.user);
-        clientId = req.user.id;
+        return res.status(401).send("Unauthorized");
     }
+
+
 
     knex("favourites")
     .join("user", "favourites.user_id", "=", "user.id")
@@ -111,8 +112,6 @@ const fetchFavouritesByUserId = (req, res) => {
       console.log(err);
       return res.status(500).send("Unable to fetch data:", err);
     });
-  
-
 }
 
 
