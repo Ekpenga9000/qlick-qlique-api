@@ -63,7 +63,7 @@ const deletePostById = (req, res) => {
   }
 
   if (!clientId) {
-    clientId = req.user.id;
+    clientId = req.user.id; 
   }
 
   knex("post")

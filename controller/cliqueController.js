@@ -50,7 +50,7 @@ const getAllCliques = (req, res) => {
   //   });
 
   knex('clique')
-    .select('clique.*', "user.display_name","favourites.status", knex.raw('CASE WHEN favourites.clique_id IS NOT NULL THEN true ELSE false END AS is_favourite'))
+    .select('clique.*', "user.display_name","user.avatar_url","favourites.status", knex.raw('CASE WHEN favourites.clique_id IS NOT NULL THEN true ELSE false END AS is_favourite'))
     .join("user", "clique.user_id", "=", "user.id")
     .leftJoin('favourites', function() {
       this.on('clique.id', '=', 'favourites.clique_id')
@@ -87,6 +87,7 @@ const getCliquesById = (req, res) => {
       "clique.category",
       "clique.description",
       "clique.banner_url",
+      "user.avatar_url",
       "user.display_name",
       "user.username"
     )

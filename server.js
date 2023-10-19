@@ -27,7 +27,6 @@ app.use(
   })
 );
 
-
 // app.use(
 //   cors({
 //     origin: process.env.CLIENT_URL,
@@ -39,7 +38,7 @@ app.use(
 
 const corsOptions = {
   origin: process.env.CLIENT_URL, // your frontend server
-  methods: 'GET, HEAD, PUT, PATCH, POST, DELETE', // include DELETE
+  methods: "GET, HEAD, PUT, PATCH, POST, DELETE", // include DELETE
   withCredentials: true,
   optionsSuccessStatus: 204,
 };
@@ -151,8 +150,8 @@ app.use("/cliques", cliqueRouter);
 app.use("/favourites", favouritesRouter);
 
 app.get("/", (req, res) => {
-  res.json({ "msg": "hello" }).status(200);
-})
+  res.json({ msg: "hello" }).status(200);
+});
 
 const validateJwt = (token) => {
   if (!token) {
@@ -223,7 +222,31 @@ app.post("/posts", upload.single("postImg"), (req, res) => {
       image_url: img_url,
     })
     .then(() => {
-      res.sendStatus(201);
+      knex("post")
+        .select(
+          "post.id",
+          "post.user_id",
+          "post.clique_id",
+          "post.content",
+          "post.created_by",
+          "post.image_url",
+          "user.display_name",
+          "user.avatar_url"
+        )
+        .join("clique", "post.clique_id", "=", "clique.id")
+        .join("user", "post.user_id", "=", "user.id")
+        .where("post.status", "Active")
+        .andWhere("post.clique_id", req.body.cliqueid)
+        .orderBy("post.created_by", "desc")
+        .then((post) => {
+          return res.status(200).json({ post: post, clientId: clientId });
+        })
+        .catch((err) => {
+          console.log(err);
+          return res.status(500).send(err.message);
+        });
+
+      // res.sendStatus(201);
     })
     .catch((err) => {
       console.log(err);
