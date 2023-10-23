@@ -13,6 +13,7 @@ const cliqueRouter = require("./routes/cliqueRoutes");
 const postRouter = require("./routes/postRoutes");
 const authRouter = require("./routes/authRoutes");
 const favouritesRouter = require("./routes/favouriteRoutes");
+const likesRouter = require("./routes/likesRoutes");
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const bcrypt = require("bcryptjs");
@@ -148,6 +149,7 @@ app.use("/profiles", userRouter);
 app.use("/posts", postRouter);
 app.use("/cliques", cliqueRouter);
 app.use("/favourites", favouritesRouter);
+app.use("/like", likesRouter);
 
 app.get("/", (req, res) => {
   res.json({ msg: "hello" }).status(200);

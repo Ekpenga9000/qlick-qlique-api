@@ -39,7 +39,7 @@ const getPostByUserId = (req, res) => {
       "post.image_url",
       "user.display_name",
         "user.avatar_url", 
-        "clique.name"
+      "clique.name"
     )
     .join("clique", "post.clique_id", "=", "clique.id")
     .join("user", "post.user_id", "=", "user.id")
@@ -54,6 +54,38 @@ const getPostByUserId = (req, res) => {
       return res.status(500).send(err.message);
     });
 };
+
+const getPostByPostId = async (req, res) => {
+  const clientId = validateJwt(req.headers.authorization) || req.user.id;
+
+  if (!clientId) return res.status(401).send("Request unauthorized");
+  
+  try {
+    const postid = req.params.postid;
+    
+    const post = await knex("post")
+      .select("post.id",
+        "post.user_id",
+        "post.clique_id",
+        "post.content",
+        "post.created_by",
+        "post.image_url",
+        "user.display_name",
+        "user.avatar_url",
+        "clique.name")
+      .join("clique", "post.clique_id", "=", "clique.id")
+      .join("user", "post.user_id", "=", "user.id")
+      .where("post.status", "Active")
+      .andWhere("post.id", postid)
+      .first();
+    
+    return res.status(200).json(post);
+    
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({"message":"Unable to carryout your request at this time."})
+  }
+}
 
 const deletePostById = (req, res) => {
   let clientId = validateJwt(req.headers.authorization);
@@ -83,4 +115,5 @@ const deletePostById = (req, res) => {
 module.exports = {
   getPostByUserId,
   deletePostById,
+  getPostByPostId
 };

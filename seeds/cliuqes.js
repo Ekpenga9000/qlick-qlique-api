@@ -26,6 +26,5 @@ exports.seed = async function(knex) {
       user_id: 2,
       status: 'Active'
     },
-    // ... your other objects here
   ]);
 };

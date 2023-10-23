@@ -183,7 +183,7 @@ const fetchFavouritesByUserId = (req, res) => {
     return res.status(401).send("Unauthorized");
   }
 
-  let clientId = validateJwt(req.headers.authorization) || req.user.id;
+  let clientId = validateJwt(req.headers.authorization) || req.user?.id;
 
   if (!clientId) {
     return res.status(401).send("Unauthorized");
