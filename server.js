@@ -149,7 +149,7 @@ app.use("/profiles", userRouter);
 app.use("/posts", postRouter);
 app.use("/cliques", cliqueRouter);
 app.use("/favourites", favouritesRouter);
-app.use("/like", likesRouter);
+app.use("/likes", likesRouter);
 
 app.get("/", (req, res) => {
   res.json({ msg: "hello" }).status(200);

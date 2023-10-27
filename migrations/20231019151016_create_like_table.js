@@ -4,7 +4,7 @@
  */
 exports.up = function(knex) {
     return knex.schema.createTable("likes", (table) => {
-        table.increments("like_id").primary();
+        table.increments("id").primary();
         table.integer("user_id").unsigned().notNullable();
         table.integer("post_id").unsigned().notNullable();
         table.timestamp("update_on").notNullable().defaultTo(knex.fn.now());

@@ -11,21 +11,59 @@ const validateJwt = (token) => {
   return user;
 };
 
+const getLikes = async (req, res) => {
+  if (!req.headers.authorization && !req.user)
+    return res.status(401).send("Unauthorized");
+
+  try {
+    let clientId = validateJwt(req.headers.authorization);
+
+    if (!clientId) {
+      clientId = req.user.id;
+    }
+    // Make first call for all likes to the post
+
+    let likesCount = 0; 
+    let userLiked;
+
+    const getCountQuery = await knex("likes")
+      .count("likes.like_id as likes_count")
+      .innerJoin("user", "likes.user_id", "user.id")
+      .innerJoin("post", "likes.post_id", "post.id")
+      .where("likes.status", "Liked")
+      .andWhere("post.status", "Active")
+      .andWhere("user.status", "Active")
+      .andWhere("post.id", req.params.postid);
+
+    likesCount = getCountQuery[0].likes_count
+
+    // Make the second call for the likes made by the user.
+    const userLikedQuery = await knex("likes")
+      .count("like_id as user_like_count")
+      .where("user_id", clientId)
+      .andWhere("post_id", req.params.postid)
+      .andWhere("status", "Liked");
+    
+    userLiked = userLikedQuery[0].user_like_count > 0;
+     
+
+    return res.status(200).json({ likesCount, userLiked });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send("Unable to process your request at this time.");
+  }
+};
+
 const addLike = async (req, res) => {
   if (!req.headers.authorization && !req.user)
     return res.status(401).send("Unauthorized");
 
   try {
-    const clientId = validateJwt(req.headers.authorization) || req.user.id;
+    let clientId = validateJwt(req.headers.authorization);
 
-    //We can use this function to toggle the like in the application.
-
-    //Adding like process
-    //Check if the comment have been unliked before
-    //there is data to confirm that the comment have been unliked, then change then change
-    //status to like.
-    //check if the comment is already liked then change the status to unlike.
-    //there is no data of the kind, then insert a new liked
+    if (!clientId) {
+      clientId = req.user.id
+    }
 
     const likeStatus = await knex("likes")
       .where("post_id", req.body.post_id)
@@ -36,22 +74,25 @@ const addLike = async (req, res) => {
     if (likeStatus) {
       return res.status(200).send("Post liked");
     } else {
-      const insertLikes = await knex("likes").insert({
+      await knex("likes").insert({
         user_id: clientId,
         post_id: req.body.post_id,
+        user_id: clientId,
       });
     }
 
-    const data = await knex("likes")
-      .join("user", "likes.user_id", "=", "user.id")
-      .join("post", "likes.post_id", "=", "post.id")
-      .select("user.id as user_id", "post.id as post_id", "likes.id as like_id")
+    const getCountQuery = await knex("likes")
+      .count("likes.like_id as likes_count")
+      .innerJoin("user", "likes.user_id", "user.id")
+      .innerJoin("post", "likes.post_id", "post.id")
       .where("likes.status", "Liked")
       .andWhere("post.status", "Active")
       .andWhere("user.status", "Active")
       .andWhere("post.id", req.body.post_id);
+    
+    const likesCount = getCountQuery[0].likes_count;
 
-    return res.status(200).json(data);
+    return res.status(200).json({ data: likesCount, isLiked: true });
   } catch (err) {
     console.error(err);
     return res
@@ -61,9 +102,45 @@ const addLike = async (req, res) => {
   //client validation.
 };
 
-const removeLike = (req, res) => {};
+const removeLike = async (req, res) => {
+  if (!req.headers.authorization && !req.user)
+    return res.status(401).send("Unauthorized");
+
+  try {
+    let clientId = validateJwt(req.headers.authorization);
+
+    if (!clientId) {
+      clientId = req.user.id
+    }
+
+    await knex("likes")
+      .where("post_id", req.body.post_id)
+      .andWhere("user_id", clientId)
+      .andWhere("status", "Like")
+      .update("likes.status", "Unliked");
+
+      const getCountQuery = await knex("likes")
+      .count("likes.like_id as likes_count")
+      .innerJoin("user", "likes.user_id", "user.id")
+      .innerJoin("post", "likes.post_id", "post.id")
+      .where("likes.status", "Liked")
+      .andWhere("post.status", "Active")
+      .andWhere("user.status", "Active")
+      .andWhere("post.id", req.body.post_id);
+    
+    const likesCount = getCountQuery[0].likes_count;
+
+    return res.status(200).json({ data: likesCount, isLiked: false });
+  } catch (err) {
+    console.error(err);
+    return res
+      .status(500)
+      .json({ message: "unable to carryout your request." });
+  }
+};
 
 module.exports = {
   addLike,
   removeLike,
+  getLikes,
 };
