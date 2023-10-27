@@ -27,7 +27,7 @@ const getLikes = async (req, res) => {
     let userLiked;
 
     const getCountQuery = await knex("likes")
-      .count("likes.like_id as likes_count")
+      .count("likes.id as likes_count")
       .innerJoin("user", "likes.user_id", "user.id")
       .innerJoin("post", "likes.post_id", "post.id")
       .where("likes.status", "Liked")
@@ -39,7 +39,7 @@ const getLikes = async (req, res) => {
 
     // Make the second call for the likes made by the user.
     const userLikedQuery = await knex("likes")
-      .count("like_id as user_like_count")
+      .count("id as user_like_count")
       .where("user_id", clientId)
       .andWhere("post_id", req.params.postid)
       .andWhere("status", "Liked");
@@ -71,9 +71,7 @@ const addLike = async (req, res) => {
       .andWhere("status", "Unliked")
       .update("likes.status", "Liked");
 
-    if (likeStatus) {
-      return res.status(200).send("Post liked");
-    } else {
+    if (!likeStatus) {
       await knex("likes").insert({
         user_id: clientId,
         post_id: req.body.post_id,
@@ -82,7 +80,7 @@ const addLike = async (req, res) => {
     }
 
     const getCountQuery = await knex("likes")
-      .count("likes.like_id as likes_count")
+      .count("likes.id as likes_count")
       .innerJoin("user", "likes.user_id", "user.id")
       .innerJoin("post", "likes.post_id", "post.id")
       .where("likes.status", "Liked")
@@ -116,11 +114,11 @@ const removeLike = async (req, res) => {
     await knex("likes")
       .where("post_id", req.body.post_id)
       .andWhere("user_id", clientId)
-      .andWhere("status", "Like")
+      .andWhere("status", "Liked")
       .update("likes.status", "Unliked");
 
       const getCountQuery = await knex("likes")
-      .count("likes.like_id as likes_count")
+      .count("likes.id as likes_count")
       .innerJoin("user", "likes.user_id", "user.id")
       .innerJoin("post", "likes.post_id", "post.id")
       .where("likes.status", "Liked")
@@ -142,5 +140,5 @@ const removeLike = async (req, res) => {
 module.exports = {
   addLike,
   removeLike,
-  getLikes,
+  getLikes
 };

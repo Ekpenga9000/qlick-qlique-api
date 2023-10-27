@@ -8,7 +8,7 @@ exports.up = function(knex) {
         table.integer("user_id").unsigned().notNullable(); 
         table.integer("post_id").unsigned().notNullable(); 
         table.timestamp("update_on").notNullable().defaultTo(knex.fn.now());
-        table.enu("status", ["Active", "Deleted"]).defaultTo("Liked");
+        table.enu("status", ["Active", "Deleted"]).defaultTo("Active");
         table.text("content").notNullable();
         table
             .foreign("user_id")

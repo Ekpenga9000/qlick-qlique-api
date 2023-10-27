@@ -4,6 +4,6 @@ const likesController = require("../controller/likesController");
 
 likesRouter.get("/:postid", likesController.getLikes);
 likesRouter.post("/", likesController.addLike);
-likesRouter.put("/unlike", likesController.removeLike);
+likesRouter.post("/unlike", likesController.removeLike);
 
 module.exports = likesRouter;
